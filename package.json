@@ -1,0 +1,27 @@
+{
+  "name": "aether-epub-library",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "pi": {
+    "extensions": [
+      "./agent.mjs"
+    ]
+  },
+  "aether": {
+    "api": {
+      "min": 2,
+      "max": 2
+    },
+    "extensions": [
+      "./aether.mjs"
+    ]
+  },
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v && node --test tests/*.test.mjs",
+    "package": "python3 package.py"
+  }
+}
