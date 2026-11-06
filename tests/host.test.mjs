@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { epub } from "./fixtures.mjs";
 import { unzipSync } from "fflate";
 import { createInterface } from "node:readline";
@@ -98,6 +98,37 @@ test(
     }
     assert.equal(config?.folder, books);
     assert.equal(config.summary.books, 1);
+    const toolResult = execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `
+      import {pathToFileURL} from 'node:url';
+      const {default:activate}=await import(pathToFileURL(process.argv[1]+'/agent.mjs'));
+      let tool;activate({registerTool:value=>tool=value});
+      const titles=await tool.execute('titles',{action:'titles'});
+      const id=titles.details.books[0].id;
+      const passage=await tool.execute('read',{action:'read',book_id:id,section_id:'1',limit:100});
+      console.log(JSON.stringify({name:tool.name,text:passage.details.text}));
+    `,
+        dir,
+      ],
+      {
+        env: {
+          ...process.env,
+          HOME: root,
+          USERPROFILE: root,
+          AETHER_EPUB_DATA: path.join(root, "data"),
+        },
+        encoding: "utf8",
+      },
+    );
+    const packaged = JSON.parse(toolResult);
+    assert.equal(packaged.name, "epub_library");
+    assert(packaged.text.includes("ONLY_GRAIN"));
+    assert(!packaged.text.includes("ONLY_HORSES"));
+
     const refreshed = await call("get_aether_extensions", { context: {} });
     assert(
       refreshed.snapshot.settings[0].sections[0].settings
