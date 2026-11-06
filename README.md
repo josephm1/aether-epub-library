@@ -1,125 +1,81 @@
 # EPUB Library for Aether
 
-A small, read-only Aether extension for discovering local EPUB books and retrieving
-selected chapters or subsections. A separate StoryLab skill uses it for narratives
-and connected exploration across subjects. The existing StoryLab web app remains
-independent.
+A small **Node.js-only** extension: choose a folder, discover EPUB titles, then
+retrieve chapters or subsections only when needed. A separate StoryLab skill uses
+the library for narratives and connected deep dives. The StoryLab app remains usable.
 
-## Install and choose a folder
+## Install
 
-Import `aether-epub-library-0.1.0.zip` through Aether's extension settings and enable
-its Pi tool and Aether settings entry. **Node 22+ and Python 3.10+ are required.**
-The Node runtime is supplied by Aether; enable its Python runtime profile if needed.
-The reader uses Python's standard library only; no pip packages, Calibre server,
-embedding model or network service is needed.
+Import the extension ZIP through Aether's extension settings and enable its Pi and
+Aether parts. Node 22 is supplied by Aether. No Python, database service, Calibre,
+embedding model, account or runtime package installation is required. The release
+bundles its ZIP/XML libraries and their licences.
 
-In **Settings → Extensions → EPUB Library**, enter an accessible EPUB folder,
-then choose **Apply folder and scan**. You can change it whenever you want. The
-old active folder stays in use if the new scan fails. Source books are never edited.
+In **Settings → Extensions → EPUB Library**, set the folder and choose **Apply
+folder and scan**. Change it at any time; a failed scan keeps the last working
+folder active. The setting accepts a **filesystem path accessible to Aether's
+runtime**. Android shared-folder picker URIs and iOS security-scoped external
+folders still need a native access adapter; this release does not implement one.
 
-This first version accepts a **filesystem folder path visible to Aether's runtime**.
-It does not implement Android's native shared-folder picker or iOS security-scoped
-folder grants. A `content://` URI is not a readable filesystem path. External device
-folders may therefore need a native access adapter before they can be used. No
-native app changes or platform parity claims are hidden behind this limitation.
+Import the separate StoryLab ZIP in **Agent Skills** and select it for a learning
+chat. It uses the `epub_library` tool, native web tools, saved exploration notes,
+and optionally Interactive UI/Anatomy. It does not alter those extensions.
 
-Scans run locally in the background of the extension action. Normal library queries
-check for added/changed/removed books after a configurable interval (60 seconds by
-default). No always-running filesystem watcher or model request is used. Closed apps
-are not scanned. Folder changes select an independent catalogue; changed editions
-receive new book IDs so old references cannot silently point at revised text.
+## Small retrieval, local discovery
 
-## Retrieval and efficiency
+- Recursively scan title/author metadata, skipping symlinks and cache directories.
+  No chapters or navigation documents are opened during cataloguing.
+- Check for added, changed or removed books when queried after the chosen interval
+  (60 seconds by default). Unchanged books are not reopened. No background watcher.
+- Search `titles` (20 per page), inspect `contents` (40 per page), optionally inspect
+  `headings`, then `read` one selected chapter/subsection with continuation offsets.
+- EPUB 3 navigation, EPUB 2 NCX and spine fallback are supported. Parent sections
+  include nested subsections; a subsection stops at its next peer/ancestor. Reads
+  cover one XHTML file; multi-file chapters need their separate contents entries.
+- Read output defaults to 4,000 characters, capped at 6,000. It includes book identity
+  and section location. Original books are read-only; a small atomic JSON catalogue
+  lives under `~/.aether/epub-library`. Changed editions receive new identities.
 
-The `epub_library` tool supports progressive retrieval plus refresh:
+The archive reader reads the ZIP directory and only decompresses requested entries.
+Metadata entries are capped at 2 MiB and chapters at 4 MiB. Malformed XML, missing
+anchors and unsupported/encrypted entries produce errors. UTF-8 text is supported;
+DRM, scanned images and visual equations may need other tools. Character/byte limits
+are **not token measurements** or a guarantee of a 4,000-token native conversation.
+No model call is made for scans or navigation; the whole library is never injected.
 
-1. `titles`: search title/author/path keywords, at most 20 results per page.
-2. `contents`: inspect EPUB 3 navigation or EPUB 2 NCX, up to 40 entries per page.
-3. `headings`: inspect headings inside one selected navigation section.
-4. `read`: read one section or selected heading, with a continuation offset.
-5. `refresh`: explicitly rescan metadata when required.
-
-Metadata scanning opens only the archive directory, container and package document.
-It does not open chapters or navigation documents. Unchanged books are skipped by
-file size/mtime. Chapter bodies are opened only for requested heading inspection or
-reading. A missing contents document falls back to spine entries; malformed XML or
-missing anchors produce a clear error instead of invented content.
-
-A selected chapter includes its nested subsections up to the next peer or ancestor
-navigation target in the same XHTML document. A subsection excludes the following
-peer. Chapters spread across multiple XHTML files must be read via their separate
-contents entries; the tool does not silently concatenate them. Navigation need not
-list every heading: `headings` allows finer local retrieval.
-
-`read` defaults to 4,000 characters and is capped at 6,000, with a cursor for the next
-page. Results include book identity, title, author, section, archive location and
-character offset. EPUB page numbers are not invented. Local metadata entries are
-bounded at 2 MiB and chapter entries at 4 MiB. Symlinks are skipped. DRM, malformed
-navigation, image-only chapters and visual equations may need other readers.
-
-These are character and byte bounds, **not measured model-token counts**. The full
-catalogue, book, current settings and source HTML are not injected at activation.
-There are no model calls from catalogue scanning or local navigation. The skill
-cannot enforce a 4,000-token ceiling on Aether's entire native conversation.
-
-## StoryLab skill
-
-Import `storylab-skill-0.1.0.zip` using Aether's Agent Skills settings and select it
-for a learning conversation. It is deliberately a separate install; the library
-extension can also serve other skills and ordinary questions.
-
-The skill guides narrative scenes, source-grounded decisions, cross-disciplinary
-excursions and a saved return checkpoint. It uses available native web tools for
-websites/Wikipedia, and Interactive UI or Anatomy only when useful. It does not
-require those visual extensions or change their settings. Learning notes stay in
-the task workspace rather than extending the EPUB catalogue with chat history.
-
-Example manual test:
-
-> Use StoryLab to explore Alexander's army and its food supply using my library
-> and reliable websites. Start with a short scene, then let me explore how feeding
-> cavalry connects to horse digestion. Distinguish historical evidence from general
-> biology. Save where we paused. When I say “back to the story,” resume that point
-> and connect what we learned to the army's provisioning choices.
-
-Verify real citations, a saved checkpoint, a useful biology detour and a correct
-return. Do not award a negative reasoning score just for differing from a historical
-decision. This behavioral flow still requires model/user acceptance testing; skill
-validation alone does not prove teaching quality.
-
-## Development and validation
+## Test
 
 ```sh
-npm test
+npm ci --ignore-scripts
 npm run package
 AETHER_EXTENSION_BRIDGE=/path/to/Aether/pi-bridge/dist/extension-bridge.mjs npm test
 ```
 
-Eight Python tests exercise actual generated EPUB fixtures: metadata-only scanning,
-recursive discovery, incremental refresh, book revisions, folder identity, NCX/spine
-fallback, nested-section boundaries, heading slicing, pagination and corrupt files.
-A Node test drives native settings handlers through a mocked API and real reader.
-A separate packaged-host test loads the ZIP through Aether's actual extension
-bridge; set `AETHER_EXTENSION_BRIDGE` to run it. Otherwise that test is explicitly
-skipped. Synthetic fixtures are created by tests; no personal library is included.
+Nine reader tests cover metadata-only scanning, updates, identities, nested sections,
+headings, pagination, malformed archives and cancellation. Another test drives the
+settings/tool path; a packaged-host test loads the ZIP through Aether's real bridge.
+Without the environment variable, the host test is explicitly skipped. Tests use
+generated books, not personal library data. A real Project Gutenberg EPUB was also
+checked locally for title discovery, contents and bounded reading.
 
-Local tests ran on Linux. No end-to-end paid-model session or physical interaction
-has been automated. iOS device verification is pending. The attached device lacks
-the Python runtime profile at preparation time; a successful desktop test does not
-establish device readiness.
+A synthetic 1,000-book local test scanned in approximately 0.4 seconds; an unchanged
+refresh took 9 ms and reopened zero books. One 20-title result page was 2,661 bytes.
+These are measurements on the development computer with tiny generated EPUBs, not
+phone performance predictions.
 
-## References
+Local Linux tests pass. No paid-model learning session or physical interaction has
+been automated; Android/iOS device acceptance remains pending.
 
-Reviewed existing approaches before implementation:
+Try the skill with: “Explore Alexander's army and food supply using my library and
+web sources. Let me follow cavalry into horse digestion, distinguish historical
+evidence from general biology, then return to the paused story when I ask.” Check
+citations and the saved return point; skill validation does not prove teaching quality.
 
-- [Ebook-MCP](https://github.com/onebirdrocks/ebook-mcp): chapter/subchapter anchor
-  handling; its directory listing is not recursive and its EbookLib reader loads
-  the book before extraction.
-- [MCP EPUB Reader](https://github.com/donghch/mcp-epub-reader): nested navigation
-  and read sessions; its default parser fetches chapter content.
-- [Pi skills](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md):
-  focused instructions loaded on demand, separate from executable integrations.
+## Design references
 
-The implementation here is original MIT code; these projects are references, not
-vendored code or runtime dependencies. There is no backwards-compatibility loader,
-legacy database migration or whole-library embedding pipeline.
+[Ebook-MCP](https://github.com/onebirdrocks/ebook-mcp) and
+[MCP EPUB Reader](https://github.com/donghch/mcp-epub-reader) informed navigation and
+subsection handling. The implementation uses [yauzl](https://github.com/thejoshwolfe/yauzl)
+for selective ZIP I/O and [xmldom](https://github.com/xmldom/xmldom) for XML; it does
+not adopt a full MCP server or book-processing framework. Original code is MIT.
+There is no Python implementation, database migration or compatibility loader.

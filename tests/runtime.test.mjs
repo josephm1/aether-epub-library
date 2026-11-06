@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import activate from "../agent.mjs";
+import { epub } from "./fixtures.mjs";
 import { activateAether } from "../aether.mjs";
 import { applyFolder, configuration, queryLibrary } from "../lib/runtime.mjs";
 
@@ -18,17 +17,8 @@ test("settings switch the actual library, tools retrieve a subsection, and failu
     if (previous === undefined) delete process.env.AETHER_EPUB_DATA;
     else process.env.AETHER_EPUB_DATA = previous;
   });
-  const python = spawnSync(
-    "python3",
-    [
-      "-c",
-      "import sys;sys.path.insert(0,'tests');from test_library import epub;from pathlib import Path;epub(Path(sys.argv[1])/'nested/book.epub');epub(Path(sys.argv[2])/'different.epub','Biology')",
-      path.join(root, "first"),
-      path.join(root, "second"),
-    ],
-    { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" },
-  );
-  assert.equal(python.status, 0, python.stderr);
+  await epub(path.join(root, "first/nested/book.epub"));
+  await epub(path.join(root, "second/different.epub"), "Biology");
   let tool, page;
   const actions = new Map(),
     storage = new Map();

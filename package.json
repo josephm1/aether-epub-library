@@ -1,6 +1,6 @@
 {
   "name": "aether-epub-library",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -21,7 +21,16 @@
     ]
   },
   "scripts": {
-    "test": "python3 -m unittest discover -s tests -v && node --test tests/*.test.mjs",
-    "package": "python3 package.py"
+    "test": "node --test tests/*.test.mjs",
+    "package": "node package.mjs"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "0.9.12",
+    "yauzl": "3.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "fflate": "0.8.3",
+    "yazl": "3.3.1"
   }
 }

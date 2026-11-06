@@ -62,7 +62,7 @@ export async function activateAether(api) {
               id: "help",
               type: "label",
               label:
-                "Change the folder above at any time, then apply it. Nested folders are scanned; source books are never edited. The folder must be accessible to Aether’s runtime. Enable the Python runtime profile if needed.",
+                "Change the folder above at any time, then apply it. Nested folders are scanned; source books are never edited. The folder must be accessible to Aether’s runtime.",
             },
           ],
         },

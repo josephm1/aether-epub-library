@@ -1,5 +1,2 @@
 dist/
-__pycache__/
-*.pyc
-*.sqlite*
 node_modules/

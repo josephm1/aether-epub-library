@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawn, execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { epub } from "./fixtures.mjs";
+import { unzipSync } from "fflate";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 const bridge = process.env.AETHER_EXTENSION_BRIDGE;
@@ -19,22 +21,18 @@ test(
     ).version;
     const dir = path.join(root, ".aether/extensions/aether-epub-library");
     await fs.mkdir(dir, { recursive: true });
-    execFileSync("python3", [
-      "-c",
-      "import sys,zipfile;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])",
-      path.join(source, "dist", `aether-epub-library-${version}.zip`),
-      dir,
-    ]);
-    const books = path.join(root, "books");
-    execFileSync(
-      "python3",
-      [
-        "-c",
-        "import sys;sys.path.insert(0,'tests');from test_library import epub;from pathlib import Path;epub(Path(sys.argv[1])/'nested/book.epub')",
-        books,
-      ],
-      { cwd: source },
+    const archive = unzipSync(
+      await fs.readFile(
+        path.join(source, "dist", `aether-epub-library-${version}.zip`),
+      ),
     );
+    for (const [name, data] of Object.entries(archive)) {
+      const target = path.join(dir, name);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, data);
+    }
+    const books = path.join(root, "books");
+    await epub(path.join(books, "nested/book.epub"));
     const child = spawn(process.execPath, [bridge], {
       env: {
         ...process.env,
